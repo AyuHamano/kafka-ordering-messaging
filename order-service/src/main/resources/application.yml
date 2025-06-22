@@ -1,6 +1,12 @@
 server:
   port: 8001
+
 spring:
   kafka:
-    bootstrap-servers: "localhost:9092"
-    topic: "Kafka-producer-topic"
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    properties:
+      spring.json.trusted.packages: "com.ayuhamano.kafka_ordering_messaging.model.dto"
+      spring.json.add.type.headers: false

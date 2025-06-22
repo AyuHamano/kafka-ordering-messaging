@@ -1,12 +1,17 @@
-package com.ayuhamano.kafka_ordering_messaging.model.entity;
+package com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity;
 
 import jakarta.persistence.*;
-
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "products")
 @Data
+@Getter
+@Setter
 public class ProductModel {
     @Id
     private Long id;
@@ -14,7 +19,7 @@ public class ProductModel {
     private String title;
     private String description;
     private String category;
-    private Double price;
+    private BigDecimal price;
     private Double discountPercentage;
     private Double rating;
     private Integer stock;

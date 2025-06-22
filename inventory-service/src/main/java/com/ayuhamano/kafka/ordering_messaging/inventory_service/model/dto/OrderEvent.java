@@ -1,9 +1,9 @@
-package com.ayuhamano.kafka_ordering_messaging.model.dto;
+package com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto;
 
 
 import java.util.List;
 
-    public record OrderEvent(
+public record OrderEvent(
         String customerName,
         String email,
         List<OrderItemDto> items
