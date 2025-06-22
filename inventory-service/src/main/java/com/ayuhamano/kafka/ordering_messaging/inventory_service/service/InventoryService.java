@@ -13,6 +13,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,25 +39,40 @@ public class InventoryService {
 
     @Transactional
     public OrderModel processOrder(OrderEvent orderEvent) {
-        if (orderEvent.items().size() != 1) {
-            throw new IllegalArgumentException("Only one item per order is allowed");
+        if (orderEvent.items().isEmpty()) {
+            throw new IllegalArgumentException("At least one item per order is required");
         }
 
-        OrderItemDto itemDto = orderEvent.items().get(0);
+        List<OrderItemDto> itemsDto = orderEvent.items();
 
-        if (!hasSufficientStock(List.of(itemDto))) {
-            throw new IllegalStateException("Insufficient stock");
+        for (OrderItemDto itemDto : itemsDto) {
+            ProductModel product = productRepository.findById(itemDto.productId())
+                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + itemDto.productId()));
+
+            if (product.getStock() < itemDto.quantity()) {
+                throw new IllegalStateException("Insufficient stock for product: " + itemDto.productId());
+            }
         }
-
-        ProductModel product = productRepository.findById(itemDto.productId())
-                .orElseThrow(() -> new IllegalArgumentException("Product not found"));
-
-        product.setStock(product.getStock() - itemDto.quantity());
-        productRepository.save(product);
 
         OrderModel order = new OrderModel();
-        order.setQuantity(1);
-        order.setProduct(product);
+        List<OrderItemModel> orderItems = new ArrayList<>();
+
+        for (OrderItemDto itemDto : itemsDto) {
+            ProductModel product = productRepository.findById(itemDto.productId())
+                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + itemDto.productId()));
+
+            product.setStock(product.getStock() - itemDto.quantity());
+            productRepository.save(product);
+
+            OrderItemModel orderItem = new OrderItemModel();
+            orderItem.setProduct(product);
+            orderItem.setQuantity(itemDto.quantity());
+            orderItem.setOrder(order); // associar à ordem
+
+            orderItems.add(orderItem);
+        }
+
+        order.setItems(orderItems);
 
         return orderRepository.save(order);
     }

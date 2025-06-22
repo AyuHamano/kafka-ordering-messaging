@@ -25,6 +25,7 @@ const cartSlice = createSlice({
         },
         clearCart(state) {
             state.items = [];
+            state.totalValue = 0
         },
         clearTotalValue(state, action) {
             state.totalValue -= action.payload;

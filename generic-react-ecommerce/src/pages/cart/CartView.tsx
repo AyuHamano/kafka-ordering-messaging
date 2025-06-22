@@ -1,6 +1,7 @@
-import {Button, Card, CardContent, CardHeader, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, IconButton, TextField, Typography} from "@mui/material";
+import {Alert, Button, Card, CardContent, CardHeader, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Grid, IconButton, TextField, Typography} from "@mui/material";
 import {useDispatch, useSelector} from "react-redux";
 import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
 
 import { ProductType } from "../../types/ProductType";
 import { clearCart, clearTotalValue, removeFromCart } from "../../redux/slices/cartSlice";
@@ -16,6 +17,8 @@ export function CartView() {
       const [name, setName] = useState('');
 
       const [openFinishDialog, setOpenFinishDialog] = useState(false);
+      const [alert, setAlert] = useState(false);
+
 
 
  cartItems.map((item: ProductType) => console.log(item))
@@ -32,8 +35,11 @@ export function CartView() {
             customerName: name
         }
         console.log(body)
+        setAlert(true)
+        dispatch(clearCart())
         try {
             const response = usePostCart({url: "http://localhost:8001/api/orders", body: body})
+            setOpenFinishDialog(false)
         } catch {
 
         }
@@ -48,6 +54,10 @@ export function CartView() {
         <Grid container sx={{backgroundColor: '#ede7e7', height: '100vh', width: '100%', padding: 20}} >
            
                 <Grid item xs={12}>
+                    {alert &&
+                    <Alert icon={<CheckIcon fontSize="inherit" />} severity="success">
+  Here is a gentle confirmation that your action was successful.
+</Alert>}
                     <Card >
                       
 
@@ -113,6 +123,7 @@ export function CartView() {
                             </Grid>
                         </CardContent>
                     </Card>
+
                 
                 
         </Grid>

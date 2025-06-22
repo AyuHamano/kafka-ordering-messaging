@@ -6,9 +6,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class OrderConsumer {
-
-    public OrderConsumer() {
-
+    private final EmailService emailService;
+    public OrderConsumer(EmailService emailService) {
+        this.emailService = emailService;
     }
 
     @KafkaListener(topics = "inventory-events",        groupId = "notification-group"

@@ -1,6 +1,5 @@
 package com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity;
 
-
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,19 +16,19 @@ public class OrderItemModel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id")
     private OrderModel order;
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id")
     private ProductModel product;
 
     private int quantity;
 
     public OrderItemModel(OrderModel order, ProductModel product, int quantity) {
-        this.product = product;
         this.order = order;
+        this.product = product;
         this.quantity = quantity;
     }
 
