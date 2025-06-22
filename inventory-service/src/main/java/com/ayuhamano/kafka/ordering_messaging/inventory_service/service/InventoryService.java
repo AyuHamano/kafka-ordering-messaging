@@ -1,5 +1,6 @@
 package com.ayuhamano.kafka.ordering_messaging.inventory_service.service;
 
+import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.NotificationDto;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderEvent;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderItem;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderItemDto;
@@ -8,6 +9,7 @@ import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity.Ord
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity.ProductModel;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.repository.OrderRepository;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.repository.ProductRepository;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +21,20 @@ public class InventoryService {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
 
-    public InventoryService(ProductRepository productRepository, OrderRepository orderRepository) {
+    private final KafkaTemplate<String, NotificationDto> kafkaTemplate;
+
+    public InventoryService(ProductRepository productRepository,
+                            KafkaTemplate<String, NotificationDto> kafkaTemplate, OrderRepository order) {
         this.productRepository = productRepository;
-        this.orderRepository = orderRepository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.orderRepository = order;
     }
+
+    public void sendConfirmationNotification(String email, String message) {
+        NotificationDto notification = new NotificationDto(email, message);
+        kafkaTemplate.send("inventory-events", notification);
+    }
+
 
     @Transactional
     public OrderModel processOrder(OrderEvent orderEvent) {

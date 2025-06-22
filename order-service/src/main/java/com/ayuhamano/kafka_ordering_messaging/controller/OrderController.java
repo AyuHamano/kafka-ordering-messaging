@@ -2,14 +2,12 @@ package com.ayuhamano.kafka_ordering_messaging.controller;
 
 import com.ayuhamano.kafka_ordering_messaging.model.dto.OrderEvent;
 import com.ayuhamano.kafka_ordering_messaging.service.OrderProducer;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 
 @RestController
 @RequestMapping("/api/orders")
+@CrossOrigin(origins = "http://localhost:5173")
 public class OrderController {
 
     private final OrderProducer orderProducer;
