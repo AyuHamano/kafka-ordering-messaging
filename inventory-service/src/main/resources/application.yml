@@ -1,13 +1,17 @@
+server:
+  port: 8002
 spring:
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
       group-id: inventory-group
+      max-poll-records: 100
       auto-offset-reset: earliest
       enable-auto-commit: false
       key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
     producer:
+      enable-idempotence: true
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     properties:

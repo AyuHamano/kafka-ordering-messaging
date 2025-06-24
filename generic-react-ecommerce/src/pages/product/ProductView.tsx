@@ -36,13 +36,13 @@ export function ProductView() {
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
     const handleAddShoppingCart = () => {
-        dispatch(addToCart({id: data?.id, name: data?.title, price: data?.price, quantity: quantity ?? 1}))
+        dispatch(addToCart({id: data?.id, name: data?.title, price: data?.price, quantity: quantity, thumbnail: data?.thumbnail}))
     }
 
-    const handleSelectChange = (e) => {
+    const handleSelectChange = (e: any) => {
+        
         setQuantity(e.target.value)
     }
-
 
     return (
         (!!data ?

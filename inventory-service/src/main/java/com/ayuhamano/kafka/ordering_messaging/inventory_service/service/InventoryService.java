@@ -30,12 +30,10 @@ public class InventoryService {
     }
 
     @Retryable(value = {Exception.class})
-    public void sendConfirmationNotification(String email, String message) {
+    public void sendConfirmationNotification(NotificationDto notificationDto) {
         try {
-            NotificationDto notification = new NotificationDto(email, message, Status.SUCCESS);
 
-
-            kafkaTemplate.send("inventory-events", notification).get(5, TimeUnit.SECONDS);
+            kafkaTemplate.send("inventory-events", notificationDto).get(5, TimeUnit.SECONDS);
 
         } catch (Exception e) {
             System.out.println("Error sending notification " + e.getMessage());
@@ -57,13 +55,19 @@ public class InventoryService {
                     .orElseThrow(() -> new IllegalArgumentException("Product not found: " + itemDto.productId()));
 
             if (product.getStock() < itemDto.quantity()) {
-                throw new IllegalStateException("Insufficient stock for product: " + itemDto.productId());
+                NotificationDto failed = new NotificationDto(order.email(), order.customerName() + ", o pedido não pôde ser finalizado pois não há estoque para o produto: " + product.getTitle() + ". Tente novamente.", Status.FAILED);
+                this.sendConfirmationNotification(failed);
+                orderRepository.deleteById(order.id());
+                throw new IllegalArgumentException(order.customerName() + ", não há estoque para seu pedido");
             }
             else {
                 product.setStock(product.getStock() - itemDto.quantity());
                 productRepository.save(product);
             }
         }
+
+        NotificationDto success = new NotificationDto(order.email(), order.customerName() + ", seu pedido  " + order.id() + " foi realizado com sucesso!", Status.SUCCESS);
+        this.sendConfirmationNotification(success);
 
     }
 

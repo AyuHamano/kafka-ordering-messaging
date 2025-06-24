@@ -23,6 +23,7 @@ public class KafkaProducerConfig {
         return TopicBuilder.name("orders")
                 .partitions(10)
                 .replicas(3)
+                .config("min.insync.replicas", "2")
                 .build();
     }
 
@@ -32,7 +33,6 @@ public class KafkaProducerConfig {
         config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-
         config.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
         config.put(JsonSerializer.TYPE_MAPPINGS, "orderEvent:com.ayuhamano.kafka_ordering_messaging.model.dto.OrderDto");
         // Configurações para tolerância à falha no producer

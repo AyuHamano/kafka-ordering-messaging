@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
@@ -37,7 +38,7 @@ public class OrderService {
 
 
     @Transactional
-    public OrderModel createOrder(OrderEvent orderEvent) throws ExecutionException, InterruptedException, TimeoutException {
+    public OrderDto createOrder(OrderEvent orderEvent) throws ExecutionException, InterruptedException, TimeoutException {
 
         List<OrderItemDto> itemsDto = orderEvent.items();
 
@@ -62,12 +63,14 @@ public class OrderService {
             order.setCustomerName(orderEvent.customerName());
             order.setEmail(orderEvent.email());
             order.setCreatedAt(LocalDateTime.now());
+            order.setId(UUID.randomUUID());
 
             OrderDto orderDto = new OrderDto(order.getId(), order.getCustomerName(), order.getEmail(), orderEvent.items());
 
             orderProducer.sendOrder(orderDto);
 
-            return orderRepository.save(order);
+            orderRepository.save(order);
+            return orderDto;
 
     }
 

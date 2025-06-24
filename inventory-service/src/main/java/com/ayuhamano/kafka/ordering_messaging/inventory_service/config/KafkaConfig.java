@@ -23,10 +23,11 @@ import java.util.Map;
 public class KafkaConfig {
 
     @Bean
-    public NewTopic orderTopic() {
+    public NewTopic InventoryTopic() {
         return TopicBuilder.name("inventory-events")
                 .partitions(10)
                 .replicas(3)
+                .config("min.insync.replicas", "2")
                 .build();
     }
 
@@ -36,11 +37,15 @@ public class KafkaConfig {
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         config.put(ConsumerConfig.GROUP_ID_CONFIG, "inventory-group");
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        //idempotência
+        config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
 
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         config.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, StringDeserializer.class);
         config.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
+
         config.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
         config.put(JsonDeserializer.VALUE_DEFAULT_TYPE, "com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderDto");
         config.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);

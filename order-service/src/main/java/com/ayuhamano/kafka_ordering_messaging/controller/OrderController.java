@@ -1,5 +1,7 @@
 package com.ayuhamano.kafka_ordering_messaging.controller;
 
+import com.ayuhamano.kafka_ordering_messaging.model.dto.ApiResponse;
+import com.ayuhamano.kafka_ordering_messaging.model.dto.OrderDto;
 import com.ayuhamano.kafka_ordering_messaging.model.dto.OrderEvent;
 import com.ayuhamano.kafka_ordering_messaging.service.OrderProducer;
 import com.ayuhamano.kafka_ordering_messaging.service.OrderService;
@@ -12,7 +14,6 @@ import java.util.concurrent.TimeoutException;
 
 @RestController
 @RequestMapping("/api/orders")
-@CrossOrigin(origins = "http://localhost:5173")
 public class OrderController {
 
     private final OrderService orderService;
@@ -27,13 +28,15 @@ public class OrderController {
     public Object createOrder(@RequestBody OrderEvent orderEvent) {
 
         try {
-            OrderEvent order = new OrderEvent( orderEvent.customerName(), orderEvent.email(), orderEvent.items());
-            orderService.createOrder(order);
-            return order;
+            OrderDto order =  orderService.createOrder(orderEvent);
+            return new ApiResponse(
+                    "Seu pedido de número " + order.id() + " está sendo processado. Aguarde confirmação do status no seu email.",
+                            order
+                    ) ;
+
         } catch (Exception e) {
             return "Request Error";
         }
-
     }
 
 }

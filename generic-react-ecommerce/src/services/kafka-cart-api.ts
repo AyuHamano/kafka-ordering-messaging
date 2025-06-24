@@ -14,7 +14,7 @@ export async function usePostCart({url, body} : {url: string, body: {customerNam
         try {
             const response = await Api.post(url, body)
             if (response.status === 200) {
-               console.log("sucesso")
+                return response.data.message
 
             }
         } catch (error) {

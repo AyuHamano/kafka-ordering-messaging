@@ -30,8 +30,23 @@ const cartSlice = createSlice({
         clearTotalValue(state, action) {
             state.totalValue -= action.payload;
         },
+        updateQuantity(state, action) {
+            const { id, quantity } = action.payload;
+            const itemToUpdate = state.items.find(item => item.id === id);
+            
+            if (itemToUpdate) {
+                // Calculate the difference in total value
+                const priceDifference = itemToUpdate.price * (quantity - itemToUpdate.quantity);
+                
+                // Update the quantity
+                itemToUpdate.quantity = quantity;
+                console.log(priceDifference)
+                // Update the total value
+                state.totalValue += priceDifference;
+            }
+        },
     },
 });
 
-export const { addToCart, removeFromCart, clearCart, clearTotalValue } = cartSlice.actions;
+export const { addToCart, removeFromCart, clearCart, clearTotalValue, updateQuantity } = cartSlice.actions;
 export default cartSlice.reducer;

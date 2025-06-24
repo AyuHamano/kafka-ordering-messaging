@@ -6,7 +6,7 @@ export interface ProductType {
     title: string
     thumbnail: string
     description: string
-    price?: number
+    price: number
     discountPercentage?: number
     rating?: number
     brand?: string
@@ -16,5 +16,5 @@ export interface ProductType {
     returnPolicy?: string;
     warrantyInformation?: string;
     weight?: number
-    quantity?: number
+    quantity: number
 }
