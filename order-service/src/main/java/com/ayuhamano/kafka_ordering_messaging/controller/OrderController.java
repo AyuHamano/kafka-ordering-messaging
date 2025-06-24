@@ -29,6 +29,7 @@ public class OrderController {
 
         try {
             OrderDto order =  orderService.createOrder(orderEvent);
+            System.out.println("Pedido ralizado com sucesso");
             return new ApiResponse(
                     "Seu pedido de número " + order.id() + " está sendo processado. Aguarde confirmação do status no seu email.",
                             order

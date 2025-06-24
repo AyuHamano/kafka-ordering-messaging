@@ -22,6 +22,7 @@ public class OrderConsumer {
     public void consume(OrderDto order) {
         try {
             inventoryService.processOrder(order);
+            System.out.println("Pedido processado com sucesso");
             logger.info("Pedido processado com sucesso");
         } catch (Exception e) {
             logger.error("Ocorreu um erro " + e.getMessage());

@@ -17,6 +17,7 @@ public class OrderConsumer {
         try {
             System.out.println(notification.email() +  " " + notification.message());
             emailService.sendEmail(notification.email(), "Mensageria Kafka - Pedido realizado " + notification.status(), notification.message());
+            System.out.println("Status do pedido confirmado por email");
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }
