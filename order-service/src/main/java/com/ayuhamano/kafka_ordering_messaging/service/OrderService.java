@@ -9,7 +9,6 @@ import com.ayuhamano.kafka_ordering_messaging.model.entity.OrderModel;
 import com.ayuhamano.kafka_ordering_messaging.model.entity.ProductModel;
 import com.ayuhamano.kafka_ordering_messaging.repository.OrderRepository;
 import com.ayuhamano.kafka_ordering_messaging.repository.ProductRepository;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,9 +62,10 @@ public class OrderService {
             order.setCustomerName(orderEvent.customerName());
             order.setEmail(orderEvent.email());
             order.setCreatedAt(LocalDateTime.now());
-            order.setId(UUID.randomUUID());
+            UUID id = UUID.randomUUID();
+            order.setId(id);
 
-            OrderDto orderDto = new OrderDto(order.getId(), order.getCustomerName(), order.getEmail(), orderEvent.items());
+            OrderDto orderDto = new OrderDto(id, order.getCustomerName(), order.getEmail(), orderEvent.items());
 
             orderProducer.sendOrder(orderDto);
 

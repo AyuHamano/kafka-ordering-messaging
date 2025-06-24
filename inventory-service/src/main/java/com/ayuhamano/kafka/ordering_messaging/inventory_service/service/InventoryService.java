@@ -4,6 +4,7 @@ import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.Notifi
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderDto;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderItemDto;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.Status;
+import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity.OrderModel;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity.ProductModel;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.repository.OrderRepository;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.repository.ProductRepository;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -43,7 +45,6 @@ public class InventoryService {
 
     @Transactional
     public void processOrder(OrderDto order) {
-
         if (order.items().isEmpty()) {
             throw new IllegalArgumentException("At least one item per order is required");
         }
@@ -55,9 +56,15 @@ public class InventoryService {
                     .orElseThrow(() -> new IllegalArgumentException("Product not found: " + itemDto.productId()));
 
             if (product.getStock() < itemDto.quantity()) {
+
+                try {
+                     orderRepository.deleteById(order.id());
+                     orderRepository.flush();
+                } catch (Exception e) {
+                    System.out.println("Erro ao deletar pedido: " + e.getMessage());
+                }
                 NotificationDto failed = new NotificationDto(order.email(), order.customerName() + ", o pedido não pôde ser finalizado pois não há estoque para o produto: " + product.getTitle() + ". Tente novamente.", Status.FAILED);
                 this.sendConfirmationNotification(failed);
-                orderRepository.deleteById(order.id());
                 throw new IllegalArgumentException(order.customerName() + ", não há estoque para seu pedido");
             }
             else {

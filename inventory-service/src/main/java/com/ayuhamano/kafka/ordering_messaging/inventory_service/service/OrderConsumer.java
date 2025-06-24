@@ -1,7 +1,6 @@
-package com.ayuhamano.kafka.ordering_messaging.inventory_service.consumer;
+package com.ayuhamano.kafka.ordering_messaging.inventory_service.service;
 
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderDto;
-import com.ayuhamano.kafka.ordering_messaging.inventory_service.service.InventoryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.kafka.annotation.KafkaListener;

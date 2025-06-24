@@ -3,13 +3,8 @@ package com.ayuhamano.kafka_ordering_messaging.controller;
 import com.ayuhamano.kafka_ordering_messaging.model.dto.ApiResponse;
 import com.ayuhamano.kafka_ordering_messaging.model.dto.OrderDto;
 import com.ayuhamano.kafka_ordering_messaging.model.dto.OrderEvent;
-import com.ayuhamano.kafka_ordering_messaging.service.OrderProducer;
 import com.ayuhamano.kafka_ordering_messaging.service.OrderService;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 
 @RestController
@@ -20,7 +15,7 @@ public class OrderController {
 
 
     public OrderController(
-                           OrderProducer orderProducer, OrderService orderService) {
+                            OrderService orderService) {
         this.orderService = orderService;
     }
 
