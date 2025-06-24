@@ -8,8 +8,9 @@ Este projeto implementa um sistema de mensageria distribuído utilizando Apache 
 
 ### Componentes Principais
 
-1. **Producer Service** - Serviço responsável por publicar mensagens nos tópicos Kafka
-2. **Consumer Service** - Serviço que consome e processa mensagens dos tópicos
+1. **Order Service** - Serviço responsável por persistir os pedidos no banco de dados e publicar eles no tópico "orders"
+2. **Inventory Service** - Serviço que consome e processa mensagens do tópico "orders", publica resultado do estoque em "inventory-events"
+2. **Notification Service** - Serviço que consome e processa mensagens dos tópico "inventory-events" e manda um e-mail de confirmação
 3. **Apache Kafka** - Broker de mensagens distribuído
 4. **Apache Zookeeper** - Coordenação e configuração do cluster Kafka
 
@@ -25,34 +26,47 @@ Este projeto implementa um sistema de mensageria distribuído utilizando Apache 
 
 - Java 17+
 - Maven 3.8+
-- Docker e Docker Compose
+- Kafka 3.71
 - Git
 
 ### Passo a Passo
 
 1. **Clone o repositório:**
-   ```bash
+   ```
    git clone <url-do-repositorio>
    cd sistema-mensageria-kafka
    ```
 
+2. **Execute os serviços dentro dapasta do kafka (para windows)**
+    ```
+   .\bin\windows\kafka-server-start.bat .\config\server.properties
+    ```
+  
+    ```
+    .\bin\windows\zookeeper-server-start.bat .\config\zookeeper.properties
+    ```
+
 4. **Execute os serviços:**
-   ```bash
-   # Terminal 1 - Consumer Service
-   cd consumer-service
+   ```
+   # Terminal 1 - Order Service
+   cd order-service
    mvn spring-boot:run
    
-   # Terminal 2 - Producer Service
-   cd producer-service
+   # Terminal 2 - Inventory Service
+   cd inventory-service
+   mvn spring-boot:run
+
+   # Terminal 3 - Notification Service
+   cd notification-service
    mvn spring-boot:run
    ```
 
 5. **Teste o sistema:**
    ```bash
-   curl -X POST http://localhost:8001/api/messages \
+   curl -X POST http://localhost:8001/api/orders \
    -H "Content-Type: application/json" \
    -d '{
-    "customerName": "ayu",
+    "customerName": "seu nome",
     "email": "seuemail@gmail.com",
     "items":[
         {"productId": 4, "quantity": 1}
@@ -72,7 +86,7 @@ A escalabilidade no Apache Kafka é alcançada através de várias estratégias:
 - Cada tópico pode ser dividido em múltiplas partições
 - Partições são distribuídas entre diferentes brokers
 - Permite processamento paralelo das mensagens
-- Exemplo de configuração:
+- Exemplo de configuração feita no Order-sevice e inventory-service:
   ```java
   @Component
   public class KafkaTopicConfig {
@@ -90,12 +104,12 @@ A escalabilidade no Apache Kafka é alcançada através de várias estratégias:
 - Consumer Groups permitem múltiplos consumidores processarem o mesmo tópico
 - Cada partição é consumida por apenas um consumidor do grupo
 - Adição dinâmica de consumidores para aumentar throughput
-- Configuração no Spring Boot:
+- Configuração no Spring Boot de inventory-service e notification-service
   ```yaml
   spring:
     kafka:
       consumer:
-        group-id: order-processing-group
+        group-id: inventory-group
         auto-offset-reset: earliest
         max-poll-records: 100
   ```
@@ -108,18 +122,17 @@ A escalabilidade no Apache Kafka é alcançada através de várias estratégias:
 
 **Estratégias de Particionamento:**
 ```java
-@Service
-public class MessageProducer {
-    
-    @Autowired
-    private KafkaTemplate<String, Object> kafkaTemplate;
-    
-    public void sendMessage(String orderId, Order order) {
-        // Particionamento por chave para garantir ordem
-        kafkaTemplate.send("orders", orderId, order);
+ @Retryable(value = {Exception.class})
+    public void sendOrder(OrderDto order) throws ExecutionException, InterruptedException, TimeoutException {
+        try{
+            kafkaTemplate.send("orders", order.id().toString(), order).get(5, TimeUnit.SECONDS);
+
+        } catch (Exception e) {
+            System.out.println(("Erro ao enviar pedido: " +  e.getMessage()));
+            throw e;
+        }
     }
-}
-```
+  ```
 
 ### 2. Tolerância à Falha
 
@@ -142,7 +155,7 @@ Tolerância à falha é a capacidade do sistema continuar operando corretamente 
    @Bean
    public NewTopic orderTopic() {
        return TopicBuilder.name("orders")
-               .partitions(6)
+               .partitions(10)
                .replicas(3) // 3 réplicas - tolera falha de 2 brokers
                .config("min.insync.replicas", "2") // Mínimo 2 réplicas sincronizadas
                .build();
@@ -160,38 +173,32 @@ Tolerância à falha é a capacidade do sistema continuar operando corretamente 
          delivery-timeout-ms: 30000
    ```
 
-3. **Consumer com Retry e Dead Letter Queue:**
+3. **Producer com Retry e Recover:**
+  O padrão Retry e Recover é uma estratégia essencial para lidar com falhas temporárias em sistemas distribuídos, garantindo que operações que dependem de recursos externos (como bancos de dados, APIs ou brokers de mensagens) tenham múltiplas chances de serem executadas antes de serem consideradas falhas definitivas.
    ```java
-   @Component
-   public class OrderConsumer {
-       
-       @KafkaListener(topics = "orders")
-       public void processOrder(Order order) {
-           try {
-               orderService.processOrder(order);
-           } catch (Exception e) {
-               // Rejeita mensagem para retry automático
-               throw new RetryableException("Falha temporária", e);
-           }
-       }
-       
-       @KafkaListener(topics = "orders.DLT")
-       public void handleFailedOrder(Order order) {
-           // Processa mensagens que falharam múltiplas vezes
-           errorService.handleFailedOrder(order);
-       }
-   }
+   @Retryable(
+            value = {Exception.class},
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 1000, multiplier = 2)
+    )
+    public void sendOrder(OrderDto order) throws ExecutionException, InterruptedException, TimeoutException {
+        try{
+            kafkaTemplate.send("orders", order.id().toString(), order).get(5, TimeUnit.SECONDS);
+            logger.info("Pedido {} enviado com sucesso", order.id());
+
+        } catch (Exception e) {
+            logger.error(("Erro ao enviar pedido: " +  e.getMessage()));
+            throw e;
+        }
+    }
+
+    @Recover
+    public void sendOrderToDlq(Exception e, OrderDto order) {
+        logger.error("Enviando pedido {} para DLQ após falhas: {}", order.id(), e.getMessage());
+        kafkaTemplate.send("orders.DLQ", order.id().toString(), order);
+    }
    ```
 
-4. **Configuração de Retry:**
-   ```yaml
-   spring:
-     kafka:
-       consumer:
-         enable-auto-commit: false
-       listener:
-         ack-mode: manual_immediate
-   ```
 
 **Mecanismos de Recuperação:**
 - **Leader Election:** Kafka automaticamente elege novo leader para partições órfãs
@@ -207,108 +214,35 @@ Idempotência garante que processar a mesma mensagem múltiplas vezes produz o m
 **Implementação da Idempotência:**
 
 1. **Idempotência no Produtor:**
-   ```yaml
-   spring:
-     kafka:
-       producer:
-         enable-idempotence: true # Evita duplicatas no nível do broker
-         max-in-flight-requests-per-connection: 1
-         retries: 3
+   ```java
+   //habilitar a idempotência
+        config.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+        config.put(ProducerConfig.ACKS_CONFIG, "all");
    ```
 
-2. **Chaves Idempotentes na Aplicação:**
+2. **Implementação no Consumidor**
    ```java
-   @Entity
-   public class ProcessedMessage {
-       @Id
-       private String messageId;
-       private LocalDateTime processedAt;
-       private String status;
-   }
-   
-   @Service
-   public class IdempotentOrderProcessor {
-       
-       @Autowired
-       private ProcessedMessageRepository processedRepo;
-       
-       @Transactional
-       public void processOrder(Order order) {
-           String messageId = order.getId() + "-" + order.getTimestamp();
-           
-           // Verifica se já foi processada
-           if (processedRepo.existsById(messageId)) {
-               log.info("Mensagem {} já processada, ignorando", messageId);
-               return;
-           }
-           
-           try {
-               // Processa o pedido
-               orderService.createOrder(order);
-               
-               // Marca como processada
-               ProcessedMessage processed = new ProcessedMessage();
-               processed.setMessageId(messageId);
-               processed.setProcessedAt(LocalDateTime.now());
-               processed.setStatus("SUCCESS");
-               processedRepo.save(processed);
-               
-           } catch (Exception e) {
-               // Registra falha para debug
-               ProcessedMessage failed = new ProcessedMessage();
-               failed.setMessageId(messageId);
-               failed.setProcessedAt(LocalDateTime.now());
-               failed.setStatus("FAILED");
-               processedRepo.save(failed);
-               throw e;
-           }
-       }
-   }
+     props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed"); // Importante!
+    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
    ```
 
-3. **Headers para Deduplicação:**
+3. **Implementando Chaves Únicas**
    ```java
-   @Component
-   public class MessageProducer {
-       
-       public void sendOrder(Order order) {
-           ProducerRecord<String, Order> record = new ProducerRecord<>(
-               "orders", 
-               order.getId(), 
-               order
-           );
-           
-           // Adiciona headers para deduplicação
-           record.headers().add("idempotency-key", 
-               (order.getId() + "-" + System.currentTimeMillis()).getBytes());
-           record.headers().add("correlation-id", 
-               order.getCorrelationId().getBytes());
-           
-           kafkaTemplate.send(record);
-       }
-   }
+   public void sendOrder(OrderDto order) throws ExecutionException, InterruptedException, TimeoutException {
+        try{
+
+          //order id é a chave única
+            kafkaTemplate.send("orders", order.id().toString(), order).get(5, TimeUnit.SECONDS);
+            logger.info("Pedido {} enviado com sucesso", order.id());
+
+        }
+        catch (Exception e) {
+            logger.error(("Erro ao enviar pedido: " +  e.getMessage()));
+            throw e;
+        }
+    }
    ```
 
-4. **Estratégia com Redis para Cache de Deduplicação:**
-   ```java
-   @Service
-   public class DeduplicationService {
-       
-       @Autowired
-       private RedisTemplate<String, String> redisTemplate;
-       
-       public boolean isAlreadyProcessed(String messageId) {
-           String key = "processed:" + messageId;
-           return redisTemplate.hasKey(key);
-       }
-       
-       public void markAsProcessed(String messageId) {
-           String key = "processed:" + messageId;
-           // TTL de 24 horas para limpeza automática
-           redisTemplate.opsForValue().set(key, "true", Duration.ofHours(24));
-       }
-   }
-   ```
 
 **Padrões de Idempotência:**
 - **Exactly-Once Semantics:** Configuração no Kafka para garantia de entrega única
@@ -316,72 +250,6 @@ Idempotência garante que processar a mesma mensagem múltiplas vezes produz o m
 - **Versionamento:** Control de versão de entidades para detecção de mudanças
 - **Timestamps:** Verificação de ordem temporal das mensagens
 
-## Monitoramento e Observabilidade
-
-### Métricas do Kafka
-```yaml
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-  metrics:
-    export:
-      prometheus:
-        enabled: true
-```
-
-### Health Checks
-```java
-@Component
-public class KafkaHealthIndicator implements HealthIndicator {
-    
-    @Override
-    public Health health() {
-        try {
-            // Verifica conectividade com Kafka
-            kafkaAdmin.listTopics();
-            return Health.up()
-                    .withDetail("kafka", "Connected")
-                    .build();
-        } catch (Exception e) {
-            return Health.down()
-                    .withDetail("kafka", "Disconnected")
-                    .withException(e)
-                    .build();
-        }
-    }
-}
-```
-
-## Configurações de Produção
-
-### Segurança
-```yaml
-spring:
-  kafka:
-    security:
-      protocol: SASL_SSL
-    ssl:
-      trust-store-location: /path/to/truststore.jks
-      trust-store-password: password
-    jaas:
-      enabled: true
-```
-
-### Performance Tuning
-```yaml
-spring:
-  kafka:
-    producer:
-      batch-size: 16384
-      linger-ms: 5
-      buffer-memory: 33554432
-    consumer:
-      fetch-min-size: 1
-      fetch-max-wait: 500
-      max-poll-records: 500
-```
 
 ## Conclusão
 
