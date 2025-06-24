@@ -16,9 +16,14 @@ Este projeto implementa um sistema de mensageria distribuído utilizando Apache 
 
 ### Estrutura do Projeto
 
-```
 
-```
+| Directory Name            | Projeto      | 
+|---------------------------|--------------------|
+| generic-react-ecommerce   | Front-end com React   | 
+| inventory-service         | Java Spring Boot com Kafka |
+| notification-service      | Java Spring Boot com Kafka  | 
+| order-service             | Java Spring Boot com Kafka   | 
+
 
 ## Como Executar a Solução
 
@@ -32,10 +37,6 @@ Este projeto implementa um sistema de mensageria distribuído utilizando Apache 
 ### Passo a Passo
 
 1. **Clone o repositório:**
-   ```
-   git clone <url-do-repositorio>
-   cd sistema-mensageria-kafka
-   ```
 
 2. **Execute os serviços dentro dapasta do kafka (para windows)**
     ```
