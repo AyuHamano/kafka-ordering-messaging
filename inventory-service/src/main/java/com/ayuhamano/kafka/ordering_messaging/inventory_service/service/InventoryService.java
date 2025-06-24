@@ -1,22 +1,20 @@
 package com.ayuhamano.kafka.ordering_messaging.inventory_service.service;
 
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.NotificationDto;
-import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderEvent;
-import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderItem;
+import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderDto;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.OrderItemDto;
-import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity.OrderItemModel;
-import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity.OrderModel;
+import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.dto.Status;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity.ProductModel;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.repository.OrderRepository;
 import com.ayuhamano.kafka.ordering_messaging.inventory_service.repository.ProductRepository;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
+import java.util.concurrent.TimeUnit;
+
 @Service
 public class InventoryService {
     private final ProductRepository productRepository;
@@ -31,19 +29,28 @@ public class InventoryService {
         this.orderRepository = order;
     }
 
+    @Retryable(value = {Exception.class})
     public void sendConfirmationNotification(String email, String message) {
-        NotificationDto notification = new NotificationDto(email, message);
-        kafkaTemplate.send("inventory-events", notification);
+        try {
+            NotificationDto notification = new NotificationDto(email, message, Status.SUCCESS);
+
+
+            kafkaTemplate.send("inventory-events", notification).get(5, TimeUnit.SECONDS);
+
+        } catch (Exception e) {
+            System.out.println("Error sending notification " + e.getMessage());
+        }
     }
 
 
     @Transactional
-    public OrderModel processOrder(OrderEvent orderEvent) {
-        if (orderEvent.items().isEmpty()) {
+    public void processOrder(OrderDto order) {
+
+        if (order.items().isEmpty()) {
             throw new IllegalArgumentException("At least one item per order is required");
         }
 
-        List<OrderItemDto> itemsDto = orderEvent.items();
+        List<OrderItemDto> itemsDto = order.items();
 
         for (OrderItemDto itemDto : itemsDto) {
             ProductModel product = productRepository.findById(itemDto.productId())
@@ -52,38 +59,12 @@ public class InventoryService {
             if (product.getStock() < itemDto.quantity()) {
                 throw new IllegalStateException("Insufficient stock for product: " + itemDto.productId());
             }
+            else {
+                product.setStock(product.getStock() - itemDto.quantity());
+                productRepository.save(product);
+            }
         }
 
-        OrderModel order = new OrderModel();
-        List<OrderItemModel> orderItems = new ArrayList<>();
-
-        for (OrderItemDto itemDto : itemsDto) {
-            ProductModel product = productRepository.findById(itemDto.productId())
-                    .orElseThrow(() -> new IllegalArgumentException("Product not found: " + itemDto.productId()));
-
-            product.setStock(product.getStock() - itemDto.quantity());
-            productRepository.save(product);
-
-            OrderItemModel orderItem = new OrderItemModel();
-            orderItem.setProduct(product);
-            orderItem.setQuantity(itemDto.quantity());
-            orderItem.setOrder(order); // associar à ordem
-
-            orderItems.add(orderItem);
-        }
-
-        order.setItems(orderItems);
-
-        return orderRepository.save(order);
     }
 
-    @Transactional(readOnly = true)
-    public boolean hasSufficientStock(List<OrderItemDto> items) {
-        if (items == null || items.isEmpty()) {
-            return false;
-        }
-        return items.stream().allMatch(item ->
-                productRepository.hasSufficientStock(item.productId(), item.quantity())
-        );
-    }
 }

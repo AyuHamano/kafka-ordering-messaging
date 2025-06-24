@@ -2,7 +2,12 @@ package com.ayuhamano.kafka_ordering_messaging.controller;
 
 import com.ayuhamano.kafka_ordering_messaging.model.dto.OrderEvent;
 import com.ayuhamano.kafka_ordering_messaging.service.OrderProducer;
+import com.ayuhamano.kafka_ordering_messaging.service.OrderService;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 
 @RestController
@@ -10,19 +15,25 @@ import org.springframework.web.bind.annotation.*;
 @CrossOrigin(origins = "http://localhost:5173")
 public class OrderController {
 
-    private final OrderProducer orderProducer;
+    private final OrderService orderService;
 
 
     public OrderController(
-                           OrderProducer orderProducer) {
-        this.orderProducer = orderProducer;
+                           OrderProducer orderProducer, OrderService orderService) {
+        this.orderService = orderService;
     }
 
     @PostMapping
-    public OrderEvent createOrder(@RequestBody OrderEvent orderEvent) {
-        OrderEvent order = new OrderEvent( orderEvent.customerName(), orderEvent.email(), orderEvent.items());
-        orderProducer.sendOrder(order);
-        return order;
+    public Object createOrder(@RequestBody OrderEvent orderEvent) {
+
+        try {
+            OrderEvent order = new OrderEvent( orderEvent.customerName(), orderEvent.email(), orderEvent.items());
+            orderService.createOrder(order);
+            return order;
+        } catch (Exception e) {
+            return "Request Error";
+        }
+
     }
 
 }

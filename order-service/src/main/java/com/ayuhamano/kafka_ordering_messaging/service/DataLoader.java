@@ -1,11 +1,12 @@
-package com.ayuhamano.kafka.ordering_messaging.inventory_service.service;
+package com.ayuhamano.kafka_ordering_messaging.service;
 
-import com.ayuhamano.kafka.ordering_messaging.inventory_service.model.entity.ProductModel;
-import com.ayuhamano.kafka.ordering_messaging.inventory_service.repository.ProductRepository;
+
+import com.ayuhamano.kafka_ordering_messaging.model.entity.ProductModel;
+import com.ayuhamano.kafka_ordering_messaging.repository.ProductRepository;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.PostConstruct;
+
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import lombok.Getter;
 import lombok.Setter;
@@ -13,8 +14,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import jakarta.persistence.PersistenceContext;
 
 import java.util.List;
+
 
 @Component
 public class DataLoader {
